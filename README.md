@@ -1,9 +1,8 @@
 # Actor-Free Continuous Control via Structurally Maximizable Q-Functions
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Hydra](https://img.shields.io/badge/config-Hydra-89b8cd.svg)](https://hydra.cc/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Paper](https://img.shields.io/badge/arXiv-2501.01234-b31b1b.svg)](https://arxiv.org/abs/2501.01234)
+<!-- [![Paper](https://img.shields.io/badge/arXiv-2501.01234-b31b1b.svg)](https://arxiv.org/abs/2501.01234) -->
 
 This repository provides the **official implementation** of the paper:
 
@@ -27,6 +26,7 @@ conda activate q3c_env
 ### Install dependencies
 ```bash
 pip install -r requirements.txt
+pip install -e .
 ```
 
 **Note:**  MuJoCo must be installed separately, as it is required for all benchmark environments.
