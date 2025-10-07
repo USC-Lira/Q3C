@@ -1,0 +1,14 @@
+.DS_Store
+*.egg-info
+.vscode
+**/__pycache__/
+.idea/
+checkpoints
+trained_models
+videos
+wandb
+results
+*.sh
+*.out
+outputs
+multirun
