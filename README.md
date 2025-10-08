@@ -4,11 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 <!-- [![Paper](https://img.shields.io/badge/arXiv-2501.01234-b31b1b.svg)](https://arxiv.org/abs/2501.01234) -->
 
-This repository provides the **official implementation** of the paper:
+This repository provides the official implementation of the paper:
 
 > **Actor-Free Continuous Control via Structurally Maximizable Q-Functions**  
-> Yigit Korkmaz*, Urvi Bhuwania*, Ayush Jain†, Erdem Bıyık†
-> NeurIPS 2025 (to appear)*
+> Yigit Korkmaz*, Urvi Bhuwania*, Ayush Jain†, Erdem Bıyık†  
+> NeurIPS 2025 (to appear)
 
 We introduce **Q3C**, a framework for continuous control without an explicit actor network by leveraging structurally maximizable Q-functions for stable and efficient policy learning.
 
