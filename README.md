@@ -32,13 +32,13 @@ pip install -e .
 
 **Note:**  MuJoCo must be installed separately, as it is required for all benchmark environments.
 
-This repository uses **[Hydra](https://hydra.cc/)** for hierarchical configuration management.  
+This repository uses [Hydra](https://hydra.cc/) for hierarchical configuration management.  
 The file `configs/hydra_sb3_q3c_hyperparams.yaml` defines environment-specific hyperparameters.
 
 
 ## Running Experiments
 
-To train and log results to **Weights & Biases**, run:
+To train and log results to Weights & Biases, run:
 
 ```bash
 python scripts/run_experiment.py wandb.entity=YOUR_WANDB_USERNAME train.environment=ENV_NAME
