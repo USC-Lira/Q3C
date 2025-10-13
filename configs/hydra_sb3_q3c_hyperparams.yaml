@@ -11,8 +11,8 @@ train:
   lr_scheduler_function: 'delayed_exponential' # linear, exponential, cosine, delayed_exponential, one_cycle_lr
   normalize_q_values: True
   use_knn: True
-  use_learnable_smoothing: False
-  smoothing_function: null # softplus, sigmoid, or null, only used with use_learnable_smoothing
+  use_learnable_smoothing: False # decaying smoothing is used by default. Change this to use learnable smoothing.
+  smoothing_function: null # softplus, sigmoid, or null, only used with use_learnable_smoothing=True
   smoothing_decay: "exponential" # linear, exponential, or null
   use_separation_loss: True
   num_envs: 4
@@ -44,20 +44,20 @@ environment:
     n_timesteps: 1000000
     policy: 'MlpPolicy'
     gamma: 0.99
-    buffer_size: 100000
+    buffer_size: 200000
     batch_size: 256
     learning_starts: 1000
     tau: 0.005
     noise_type: 'normal'
-    noise_std: 0.2
+    noise_std: 0.1
     gradient_steps: 1
     train_freq: 1
     learning_rate: !!float 1e-3
     policy_kwargs: "dict(net_arch=[400, 300])"
     target_update_interval: 4
     max_grad_norm: 10.0
-    num_control_points: 20
-    k: 10
+    num_control_points: 3
+    k: 3
     target_policy_noise: 0.0
     separation_loss_function: "repulsion_loss"
     separation_loss_coefficient: 0.01 

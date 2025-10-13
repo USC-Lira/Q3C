@@ -72,7 +72,7 @@ class Q3CNetwork(BasePolicy):
         features = self.extract_features(obs, self.features_extractor)
         control_point_act = self.act_net(features)
         control_point_act_reshaped = control_point_act.view(B, self.num_control_points, self.action_size)
-        x = th.cat((features.unsqueeze(1).repeat(1, self.num_control_points, 1), control_point_act_reshaped), dim=-1)
+        x = th.cat((features.unsqueeze(1).expand(-1, self.num_control_points, -1), control_point_act_reshaped), dim=-1)
         x = self.q_net(x)                
         x = x.view(B, -1)
         x = th.cat((control_point_act, x), dim=-1)

@@ -132,7 +132,6 @@ class Q3C(OffPolicyAlgorithm):
     def _setup_model(self) -> None:
         super()._setup_model()
         self._create_aliases()
-        # self.policy.optimizer.lr =
         # Copy running stats, see GH issue #996
         self.batch_norm_stats = get_parameters_by_name(self.q_net_1, ["running_"])
         self.batch_norm_stats_target = get_parameters_by_name(self.q_net_target_1, ["running_"])
@@ -195,13 +194,15 @@ class Q3C(OffPolicyAlgorithm):
                 next_actions = next_values[:, :num_u_values]
                 # Reshape next_actions to [batch_size, num_control_points, action_dim]
                 next_actions = next_actions.view(next_actions.shape[0], self.policy.num_control_points, -1)
-                max_control_point_indices = next_q_values.argmax(dim=1)
-                best_next_action = next_actions[th.arange(next_actions.shape[0]), max_control_point_indices]
+                max_control_point_indices = next_q_values.argmax(dim=1, keepdim=True)
+                best_next_action = next_actions.gather(
+                    1, max_control_point_indices.unsqueeze(-1).expand(-1, -1, next_actions.size(-1))
+                ).squeeze(1)
 
-                noise = replay_data.actions.clone().data.normal_(0, self.target_policy_noise)
-                noise = noise.clamp(-self.target_noise_clip, self.target_noise_clip)
+                noise = th.zeros_like(best_next_action).normal_(0, self.target_policy_noise)
+                noise.clamp_(-self.target_noise_clip, self.target_noise_clip)
                 noise_added_action = best_next_action + noise
-                noise_added_action = noise_added_action.clamp(-1, 1)
+                noise_added_action.clamp_(-1, 1)
                 next_q_values_target_1, _, _ = self.calculate_arbitrary_q_value(self.q_net_target_1, replay_data.next_observations, noise_added_action, C=self.C1)
                 next_q_values_target_2, _, _ = self.calculate_arbitrary_q_value(self.q_net_target_2, replay_data.next_observations, noise_added_action, C=self.C2)
                 Q_targets_next = th.min(next_q_values_target_1, next_q_values_target_2)
@@ -210,7 +211,7 @@ class Q3C(OffPolicyAlgorithm):
             Q_targets = replay_data.rewards + (self.gamma * Q_targets_next * (1 - replay_data.dones))
             
             loss = 0
-            for idx, q_net in enumerate([self.q_net_1, self.q_net_2]):
+            for idx, q_net in enumerate((self.q_net_1, self.q_net_2)):
                 C = self.C1 if idx == 0 else self.C2
                 Q_expected, network_outputs, _ = self.calculate_arbitrary_q_value(q_net, replay_data.observations, replay_data.actions, C=C)
                 loss += 0.5 * F.mse_loss(Q_expected, Q_targets.detach())
