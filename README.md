@@ -2,7 +2,7 @@
 
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-<!-- [![Paper](https://img.shields.io/badge/arXiv-2501.01234-b31b1b.svg)](https://arxiv.org/abs/2501.01234) -->
+[![Paper](https://img.shields.io/badge/arXiv-2510.18828-b31b1b.svg)](https://arxiv.org/abs/2510.18828)
 
 This repository provides the official implementation of the paper:
 
