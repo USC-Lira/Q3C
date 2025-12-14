@@ -154,7 +154,8 @@ class Q3CPolicy(BasePolicy):
             self.C2 = th.nn.Parameter(th.rand(1, device=self.device), requires_grad=True)
         else:
             self.use_learnable_smoothing = False
-            self.C = th.tensor([smoothing_value]).to(self.device)
+            # Make C a Parameter with requires_grad=False so it gets saved but isn't trained
+            self.C = th.nn.Parameter(th.tensor([smoothing_value], device=self.device), requires_grad=False)
 
         self._build(lr_schedule)
 
@@ -222,12 +223,14 @@ class Q3CPolicy(BasePolicy):
                 net_arch=self.net_args["net_arch"],
                 activation_fn=self.net_args["activation_fn"],
                 num_control_points=self.num_control_points,
+                k=self.k,
                 lr_schedule=self._dummy_schedule,  # dummy lr schedule, not needed for loading policy alone
                 optimizer_class=self.optimizer_class,
                 optimizer_kwargs=self.optimizer_kwargs,
                 features_extractor_class=self.features_extractor_class,
                 features_extractor_kwargs=self.features_extractor_kwargs,
                 use_learnable_smoothing=self.use_learnable_smoothing,
+                smoothing_value=self.C.item() if not self.use_learnable_smoothing else self.C1.item(),
             )
         )
         return data
@@ -247,6 +250,7 @@ class Q3CPolicy(BasePolicy):
         if self.use_learnable_smoothing:
             self.C1.requires_grad = mode
             self.C2.requires_grad = mode
+        # C should always have requires_grad=False for non-learnable smoothing
         self.training = mode
 
 

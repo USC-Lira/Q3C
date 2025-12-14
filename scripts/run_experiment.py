@@ -139,7 +139,7 @@ def main(cfg: DictConfig):
 
     experiment_flags = {}
     for key in cfg_dict["train"]:
-        if key not in ['save_gif', 'disable_wandb', 'environment']: 
+        if key not in ['save_gif', 'save_model', 'load_model', 'load_model_path', 'disable_wandb', 'environment']: 
             experiment_flags[key] = cfg_dict["train"][key]
 
     callback_freq = (env_hyperparameters['n_timesteps'] // num_envs) // 100
@@ -160,7 +160,6 @@ def main(cfg: DictConfig):
             wandb_hyperparameters[key] = value
 
     tags = [env_name, "q3c"]
-    initial_smoothing_value = env_hyperparameters.pop('smoothing_value', 0.1)
 
     run = wandb.init(entity=wandb_params["entity"],
                      project=wandb_params["project"],
@@ -188,8 +187,6 @@ def main(cfg: DictConfig):
     env_hyperparameters.pop('policy_kwargs')
     policy_kwargs['num_control_points'] = env_hyperparameters.pop('num_control_points')
     policy_kwargs['k'] = env_hyperparameters.pop('k')
-    policy_kwargs['separation_loss_function'] = env_hyperparameters.pop('separation_loss_function', 'repulsion_loss')
-    policy_kwargs['separation_loss_coefficient'] = env_hyperparameters.pop('separation_loss_coefficient', 0.01)
     lr_scheduler_function = experiment_flags.pop('lr_scheduler_function')
     if experiment_flags.pop('use_lr_schedule'):
         if lr_scheduler_function == 'exponential': 
@@ -205,26 +202,33 @@ def main(cfg: DictConfig):
         else:
             raise ValueError(f"Invalid learning rate scheduler function: {lr_scheduler_function}")
     for key, value in experiment_flags.items():
-        policy_kwargs[key] = value
-    policy_kwargs['smoothing_value'] = initial_smoothing_value
+        env_hyperparameters[key] = value
+    policy_kwargs['use_learnable_smoothing'] = env_hyperparameters['use_learnable_smoothing']
+    policy_kwargs['smoothing_value'] = env_hyperparameters['smoothing_value']
 
     callback_list = []
     if not cfg_dict["train"]["disable_wandb"]:
         wandb_callback = WandbCallback()
         callback_list.append(wandb_callback)
     log_folder = task_folder + "/" + EXPERIMENT_NAME
-    checkpoint_callback = CheckpointCallback(save_freq=total_timesteps, save_path=task_folder, name_prefix=f'q3c_{env_name}')
     eval_callback = EvalCallback(eval_env,
                                  log_path=log_folder, eval_freq=callback_freq, n_eval_episodes=n_eval_episodes,
                                  deterministic=True, render=False)
-    callback_list.append(checkpoint_callback)
     callback_list.append(eval_callback)
+    if cfg_dict["train"]["save_model"]:
+        checkpoint_callback = CheckpointCallback(save_freq=callback_freq*10, save_path=log_folder, name_prefix=f'q3c_{env_name}')
+        callback_list.append(checkpoint_callback)
 
-    model = Q3C(env=env,
-                action_noise=action_noise,
-                device=device,
-                policy_kwargs=policy_kwargs,
-                **env_hyperparameters)
+    if cfg_dict["train"]["load_model"]:
+        model = Q3C.load(cfg_dict["train"]["load_model_path"], env=env, device=device)
+        mean_reward, std_reward = evaluate_policy(model, eval_env, n_eval_episodes=10, deterministic=True)
+        print(f"Mean reward of loaded model: {mean_reward} +/- {std_reward}")
+    else:
+        model = Q3C(env=env,
+                    action_noise=action_noise,
+                    device=device,
+                    policy_kwargs=policy_kwargs,
+                    **env_hyperparameters)
     new_logger = configure(log_folder, ["stdout", "tensorboard"])
     model.set_logger(new_logger)
     print("created model and logger")

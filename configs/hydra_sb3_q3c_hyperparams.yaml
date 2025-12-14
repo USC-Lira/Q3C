@@ -6,14 +6,17 @@ wandb:
 train:
   environment: Hopper-v4
   save_gif: False
+  save_model: False
+  load_model: False
+  load_model_path: models/Hopper-v4/q3c_Hopper-v4.pkl
   disable_wandb: False
   use_lr_schedule: True
   lr_scheduler_function: 'delayed_exponential' # linear, exponential, cosine, delayed_exponential, one_cycle_lr
   normalize_q_values: True
   use_knn: True
   use_learnable_smoothing: False # decaying smoothing is used by default. Change this to use learnable smoothing.
-  smoothing_function: null # softplus, sigmoid, or null, only used with use_learnable_smoothing=True
-  smoothing_decay: "exponential" # linear, exponential, or null
+  learnable_smoothing_function: null # softplus, sigmoid, or null, only used with use_learnable_smoothing=True
+  smoothing_decay_function: "exponential" # linear, exponential, or null
   use_separation_loss: True
   num_envs: 4
 

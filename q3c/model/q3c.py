@@ -65,6 +65,15 @@ class Q3C(OffPolicyAlgorithm):
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         _init_setup_model: bool = True,
+        use_knn: bool = False,
+        use_separation_loss: bool = False,
+        separation_loss_function: str = 'repulsion_loss',
+        separation_loss_coefficient: float = 0.01,
+        use_learnable_smoothing: bool = False,
+        normalize_q_values: bool = False,
+        smoothing_value: float = 0.1,
+        learnable_smoothing_function: str = None,
+        smoothing_decay_function: str = 'exponential',
     ) -> None:
         super().__init__(
             policy,
@@ -99,32 +108,15 @@ class Q3C(OffPolicyAlgorithm):
         self._n_calls = 0
         self.max_grad_norm = max_grad_norm
 
-        self.use_knn = policy_kwargs.pop("use_knn")
-        self.use_separation_loss = policy_kwargs.pop("use_separation_loss")
-        self.separation_loss_function = policy_kwargs.pop("separation_loss_function")
-        self.separation_loss_coefficient = policy_kwargs.pop("separation_loss_coefficient")
-        self.use_learnable_smoothing = policy_kwargs["use_learnable_smoothing"]
-        self.normalize_q_values = policy_kwargs.pop("normalize_q_values")
-        smoothing_function = policy_kwargs.pop("smoothing_function")
-        if policy_kwargs['use_learnable_smoothing']:
-            policy_kwargs.pop("smoothing_decay", None)
-            if smoothing_function == "sigmoid":
-                self.smoothing_function = F.sigmoid
-            elif smoothing_function == "softplus":
-                self.smoothing_function = F.softplus
-            else:
-                raise ValueError(f"Invalid smoothing function: {smoothing_function}")
-        else:
-            self.smoothing_function = nn.Identity()
-            self.smoothing_decay = policy_kwargs.pop("smoothing_decay", None)
-            if self.smoothing_decay is None:
-                self.smoothing_decay = None
-            elif self.smoothing_decay == "linear":
-                self.smoothing_decay = LinearSmoothingDecay(initial_value=policy_kwargs['smoothing_value'], min_value=0, device=self.device)
-            elif self.smoothing_decay == "exponential":
-                self.smoothing_decay = ExponentialSmoothingDecay(initial_value=policy_kwargs['smoothing_value'], min_value=0, device=self.device)
-            else:
-                raise ValueError(f"Invalid smoothing decay: {self.smoothing_decay}")
+        self.use_knn = use_knn
+        self.use_separation_loss = use_separation_loss
+        self.separation_loss_function = separation_loss_function
+        self.separation_loss_coefficient = separation_loss_coefficient
+        self.use_learnable_smoothing = use_learnable_smoothing
+        self.normalize_q_values = normalize_q_values
+        self.learnable_smoothing_function = learnable_smoothing_function
+        self.smoothing_decay_function = smoothing_decay_function
+        self.smoothing_value = smoothing_value
 
         if _init_setup_model:
             self._setup_model()
@@ -143,6 +135,24 @@ class Q3C(OffPolicyAlgorithm):
                     "therefore the target network will be updated after each call to env.step() "
                     f"which corresponds to {self.n_envs} steps."
                 )
+        if self.use_learnable_smoothing:
+            self.smoothing_decay = None
+            if self.learnable_smoothing_function == "sigmoid":
+                self.smoothing_function = F.sigmoid
+            elif self.learnable_smoothing_function == "softplus":
+                self.smoothing_function = F.softplus
+            else:
+                raise ValueError(f"Invalid smoothing function: {self.learnable_smoothing_function}")
+        else:
+            self.smoothing_function = nn.Identity()
+            if self.smoothing_decay_function is None:
+                self.smoothing_decay = None
+            elif self.smoothing_decay_function == "linear":
+                self.smoothing_decay = LinearSmoothingDecay(initial_value=self.smoothing_value, min_value=0, device=self.device)
+            elif self.smoothing_decay_function == "exponential":
+                self.smoothing_decay = ExponentialSmoothingDecay(initial_value=self.smoothing_value, min_value=0, device=self.device)
+            else:
+                raise ValueError(f"Invalid smoothing decay: {self.smoothing_decay_function}")
 
     def _create_aliases(self) -> None:
         self.q_net_1 = self.policy.q_net_1
@@ -150,11 +160,11 @@ class Q3C(OffPolicyAlgorithm):
         self.q_net_target_1 = self.policy.q_net_target_1
         self.q_net_target_2 = self.policy.q_net_target_2
         if self.use_learnable_smoothing:
-            self.C1 = self.policy.C1.to(self.device)
-            self.C2 = self.policy.C2.to(self.device)
+            self.C1 = self.policy.C1
+            self.C2 = self.policy.C2
         else:
-            self.C1 = self.policy.C.to(self.device)
-            self.C2 = self.policy.C.to(self.device)
+            self.C1 = self.policy.C
+            self.C2 = self.policy.C
 
     def _on_step(self) -> None:
         """
@@ -177,8 +187,10 @@ class Q3C(OffPolicyAlgorithm):
 
         if not self.use_learnable_smoothing:
             if self.smoothing_decay is not None:
-                self.C1 = self.smoothing_decay(self.num_timesteps, self.total_timesteps)
-                self.C2 = self.smoothing_decay(self.num_timesteps, self.total_timesteps)
+                # Calculate the new C value from the decay schedule
+                new_C = self.smoothing_decay(self.num_timesteps, self.total_timesteps)
+                # Since self.C1 and self.C2 are references to self.policy.C, this updates all three
+                self.policy.C.data.copy_(new_C)
 
         losses = []
         separation_losses = []
